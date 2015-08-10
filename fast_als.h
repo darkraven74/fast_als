@@ -17,6 +17,8 @@ public:
 	typedef std::vector<float> features_vector;
 	typedef std::vector< std::vector<int> >	 likes_vector;
 	typedef std::vector< std::vector<float> >   likes_weights_vector;
+	typedef std::vector<int> likes_vector_item;
+	typedef std::vector<float> likes_weights_vector_item;
 	///
 	/// Ctor
 	/// Inputs are:
@@ -76,6 +78,31 @@ protected:
 	/// fill random values to features matrix
 	///
 	void fill_rnd(features_vector& in_v, int in_size);
+
+	///
+	/// solve one iteration of als
+	///
+	void solve(
+			const likes_vector::const_iterator& likes,
+			const likes_weights_vector::const_iterator& weights,
+			const features_vector& in_v,
+			int in_size,
+			features_vector& out_v,
+			int out_size,
+			int _count_features);
+
+	fast_als::features_vector calc_g(const features_vector& in_v, int in_size, int _count_features);
+
+	void calc_ridge_regression(
+			const likes_vector_item& likes,
+			const likes_weights_vector_item& weights,
+			const features_vector& in_v,
+			int in_size,
+			features_vector& out_v,
+			int out_size,
+			int _count_features,
+			features_vector& g,
+			int id);
 
 private:
 	///

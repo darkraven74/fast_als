@@ -1,4 +1,5 @@
 #include "fast_als.h"
+#include <armadillo>
 
 
 fast_als::fast_als(std::istream& tuples_stream,
@@ -13,10 +14,10 @@ fast_als::fast_als(std::istream& tuples_stream,
 		_als_alfa(alfa),
 		_als_gamma(gamma)
 {
-   read_likes(tuples_stream, count_samples, likes_format);
+	read_likes(tuples_stream, count_samples, likes_format);
 
-   _features_users.assign(_count_users * _count_features, 0 );
-   _features_items.assign(_count_items * _count_features, 0 );
+	_features_users.assign(_count_users * _count_features, 0 );
+	_features_items.assign(_count_items * _count_features, 0 );
 }
 
 fast_als::~fast_als()
@@ -111,11 +112,120 @@ void fast_als::calculate(int count_iterations)
 	fill_rnd(_features_users, _count_users);
 	fill_rnd(_features_items, _count_items);
 
+	for(int i = 0; i < count_iterations; i++)
+	{
+		time_t start =  time(0);
+		std::cerr << "ALS Iteration: " << i << std::endl;
+
+		std::cerr << "Items." << std::endl;
+		solve(_item_likes.begin(), _item_likes_weights.begin(), _features_users, _count_users, _features_items, _count_items, _count_features);
+		std::cerr << "Users." << std::endl;
+		solve(_user_likes.begin(), _user_likes_weights.begin(), _features_items, _count_items, _features_users, _count_users, _count_features);
+
+		time_t end =  time(0);
+		std::cerr << "==== Iteration time : " << end - start << std::endl;
+
+//		calc_error();
+	}
 
 	/// serialize(std::cout);
-
 	/// calc_error();
 }
+
+void fast_als::solve(
+		const likes_vector::const_iterator& likes,
+		const likes_weights_vector::const_iterator& weights,
+		const features_vector& in_v,
+		int in_size,
+		features_vector& out_v,
+		int out_size,
+		int _count_features)
+{
+	fast_als::features_vector g = calc_g(in_v, in_size, _count_features);
+
+	for (int i = 0; i < out_size; i++)
+	{
+		calc_ridge_regression(*(likes + i), *(weights + i), in_v, in_size, out_v, out_size, _count_features, g, i);
+	}
+}
+
+fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_size, int _count_features)
+{
+	arma::fmat A(in_v);
+	A.reshape(in_size, _count_features);
+	A = A.t() * A;
+
+	arma::fvec eigval;
+	arma::fmat eigvec;
+
+	arma::eig_sym(eigval, eigvec, A);
+
+	arma::fmat lam_sqrt(arma::diagmat(arma::sqrt(eigval)));
+	arma::fmat G = lam_sqrt * eigvec.t();
+
+	return arma::conv_to<fast_als::features_vector>::from(arma::vectorise(G));
+}
+
+void fast_als::calc_ridge_regression(
+		const likes_vector_item& likes,
+		const likes_weights_vector_item& weights,
+		const features_vector& in_v,
+		int in_size,
+		features_vector& out_v,
+		int out_size,
+		int _count_features,
+		features_vector& g,
+		int id)
+{
+	int count_samples = in_size + _count_features;
+	std::vector<float> errors(count_samples);
+
+	for (int i = 0; i < in_size; i++)
+	{
+		float sum = 0;
+		for (int j = 0; j < _count_features; j++)
+		{
+			sum += out_v[id * _count_features + j] * in_v[i * _count_features + j];
+		}
+		errors[i] = likes[i] - sum;
+	}
+
+	for (int i = 0; i < _count_features; i++)
+	{
+		float sum = 0;
+		for (int j = 0; j < _count_features; j++)
+		{
+			sum += out_v[id * _count_features + j] * g[i * _count_features + j];
+		}
+		errors[in_size + i] = -sum;
+	}
+
+	for (int k = 0; k < _count_features; k++)
+	{
+		for (int i = 0; i < in_size; i++)
+		{
+			errors[i] += out_v[id * _count_features + k] * in_v[i * _count_features + k];
+		}
+		for (int i = 0; i < _count_features; i++)
+		{
+			errors[in_size + i] += out_v[id * _count_features + k] * g[i * _count_features + k];
+		}
+
+		out_v[id * _count_features + k] = 0;
+
+		float a = 0;
+		float d = 0;
+		for (int i = 0; i < in_size; i++)
+		{
+//			a += (1 + alpha * weights[i]) * in_v[i * _count_features + k] * in_v[i * _count_features + k];
+//			d += (1 + alpha * weights[i]) * in_v[i * _count_features + k] * errors[i];
+		}
+
+
+	}
+
+}
+
 
 void fast_als::serialize_users_map(std::ostream& out)
 {
