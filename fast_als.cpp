@@ -330,36 +330,78 @@ void fast_als::calc_ridge_regression(
 
 float fast_als::MSE(int count_users, int count_items)
 {
-	arma::fmat P(_features_users);
-	P.reshape(_count_features, _count_users);
-	P.resize(_count_features, count_users);
+	std::vector<float> r(count_users * count_users, 0);
+	std::vector<int> users_for_error;
+	std::vector<int> items_for_error;
+	features_vector users;
+	features_vector items;
+	srand(time(NULL));
+	users.assign(count_users * _count_features, 0);
+	for( int i=0;  i < count_users; i++)
+	{
+		const int r1 = rand() % _count_users;
+//		const int r1 = i;
+		users_for_error.push_back(r1);
+	}
+
+	for(unsigned int i=0;  i < users_for_error.size(); i++)
+	{
+		const int r1 = users_for_error[i];
+		for( int c=0; c < _count_features; c++)
+			users[i * _count_features + c] = _features_users[r1 * _count_features + c];
+	}
+
+	items.assign(count_items * _count_features, 0);
+
+	for( int i=0;  i < count_items; i++)
+	{
+		const int r1 = rand() % _count_items;
+//		const int r1 = i;
+		items_for_error.push_back(r1);
+	}
+
+	for(unsigned int i=0;  i < items_for_error.size(); i++)
+	{
+		const int r1 = items_for_error[i];
+		for( int c=0; c < _count_features; c++)
+			items[i * _count_features + c] = _features_items[r1 * _count_features + c];
+	}
+
+	for (int i = 0; i < count_users; i++)
+	{
+		for (int j = 0; j < count_items; j++)
+		{
+			int user_id = users_for_error[i];
+			int item_id = items_for_error[j];
+
+			for (unsigned int k = 0; k < _user_likes[user_id].size(); k++)
+			{
+				if (_user_likes[user_id][k] == item_id)
+				{
+					r[i * count_items + j] = 1;
+				}
+			}
+		}
+	}
+
+
+
+	arma::fmat P(users);
+	P.reshape(_count_features, count_users);
 	P = P.t();
 
-	arma::fmat Q(_features_items);
-	Q.reshape(_count_features, _count_items);
+	arma::fmat Q(items);
 	Q.reshape(_count_features, count_items);
 
 
 	arma::fmat predict = P * Q;
-
-	arma::fmat R(count_users, count_items);
-	R.zeros();
-
-	for (int i = 0; i < count_users; i++)
-	{
-		for (unsigned int j = 0; j < _user_likes[i].size(); j++)
-		{
-			if (_user_likes[i][j] < count_items)
-				R.at(i, _user_likes[i][j]) = 1;
-		}
-	}
 
 	float mse = 0;
 	for (int i = 0; i < count_users; i++)
 	{
 		for (int j = 0; j < count_items; j++)
 		{
-			mse += (R.at(i ,j) - predict.at(i, j)) * (R.at(i ,j) - predict.at(i, j));
+			mse += (r[i * count_items + j] - predict.at(i, j)) * (r[i * count_items + j] - predict.at(i, j));
 		}
 	}
 	float size = count_items * count_users;
