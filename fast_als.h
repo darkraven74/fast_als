@@ -45,6 +45,8 @@ public:
 	///
 	virtual void calculate(int count_iterations);
 
+	virtual float MSE(int count_users, int count_items);
+
 	///
 	/// Get Items features vector
 	///

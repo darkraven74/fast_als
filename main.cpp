@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
 	int cit = 10;
 	int likes_format = 0;
 	float als_alfa = 5;
+	int samples_for_calc_error_users = 0;
+	int samples_for_calc_error_items = 0;
 
 	for(int i = 1; i <  argc; i++)
 	{
@@ -58,6 +60,20 @@ int main(int argc, char *argv[])
 			i++;
 			als_alfa = atof(argv[i]);
 		}
+		else
+		if( sarg == "--als-error")
+		{
+			i++;
+			std::string samples(argv[i]);
+			size_t pos = samples.find(":");
+			if(pos == std::string::npos)
+				samples_for_calc_error_users  =  samples_for_calc_error_items =  atoi(argv[i]);
+			else
+			{
+				samples_for_calc_error_users = atoi(samples.substr(0,pos).c_str());
+				samples_for_calc_error_items = atoi(samples.substr(pos+1).c_str());
+			}
+		}
 	}
 
 	std::ifstream f_stream(likes_file_name.c_str() );
@@ -77,7 +93,13 @@ int main(int argc, char *argv[])
 	als_alg.calculate(cit);
 	gettimeofday(&t2, NULL);
 
+
+
 	std::cerr << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
+
+	float mse = als_alg.MSE(samples_for_calc_error_users, samples_for_calc_error_items);
+	std::cerr << " MSE: " << mse << std::endl;
+
 
 	std::ofstream fout_users((output_file_name+".ufea").c_str());
 	als_alg.serialize_users(fout_users);
