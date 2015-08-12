@@ -103,7 +103,7 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 void fast_als::fill_rnd(features_vector& in_v, int in_size)
 {
 	std::cerr << "Generate random features.. ";
-	std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+	std::default_random_engine generator(time(NULL));
 //	std::default_random_engine generator(31);
 	std::uniform_real_distribution<float> distribution(0, 1);
 
@@ -301,8 +301,8 @@ void fast_als::MSE()
 	{
 		for(int i = 0; i < _count_error_samples_for_users; i++)
 		{
-			const int r1 = rand() % _count_users;
-//			const int r1 = i;
+//			const int r1 = rand() % _count_users;
+			const int r1 = i;
 			users_for_error.push_back(r1);
 		}
 	}
@@ -320,8 +320,8 @@ void fast_als::MSE()
 	{
 		for(int i = 0; i < _count_error_samples_for_items; i++)
 		{
-			const int r1 = rand() % _count_items;
-//			const int r1 = i;
+//			const int r1 = rand() % _count_items;
+			const int r1 = i;
 			items_for_error.push_back(r1);
 		}
 	}
@@ -367,7 +367,8 @@ void fast_als::MSE()
 	{
 		for (int j = 0; j < _count_error_samples_for_items; j++)
 		{
-			mse += (r[i * _count_error_samples_for_items + j] - predict.at(i, j)) * (r[i * _count_error_samples_for_items + j] - predict.at(i, j));
+			if (r[i * _count_error_samples_for_items + j] == 1)
+				mse += (r[i * _count_error_samples_for_items + j] - predict.at(i, j)) * (r[i * _count_error_samples_for_items + j] - predict.at(i, j));
 		}
 	}
 	float size = _count_error_samples_for_items * _count_error_samples_for_users;
