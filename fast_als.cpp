@@ -3,17 +3,23 @@
 #include <cmath>
 #include <chrono>
 
+#define EPS 1e-6
+
 fast_als::fast_als(std::istream& tuples_stream,
 		int count_features,
 		float alfa,
 		float gamma,
 		int count_samples,
-		int likes_format) :
+		int likes_format,
+		int count_error_samples_for_users,
+		int count_error_samples_for_items) :
 		_count_users(0),
 		_count_items(0),
 		_count_features(count_features),
 		_als_alfa(alfa),
-		_als_gamma(gamma)
+		_als_gamma(gamma),
+		_count_error_samples_for_users(count_error_samples_for_users),
+		_count_error_samples_for_items(count_error_samples_for_items)
 {
 	read_likes(tuples_stream, count_samples, likes_format);
 
@@ -97,14 +103,13 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 void fast_als::fill_rnd(features_vector& in_v, int in_size)
 {
 	std::cerr << "Generate random features.. ";
-//	std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
-	std::default_random_engine generator(31);
+	std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+//	std::default_random_engine generator(31);
 	std::uniform_real_distribution<float> distribution(0, 1);
 
 	for (int i = 0; i < in_size * _count_features; i++)
 	{
 		in_v[i] = sqrt(1.0 / _count_features) * distribution(generator);
-//		std::cerr << in_v[i] << std::endl;
 	}
 
 	std::cerr << "done" << std::endl;
@@ -129,8 +134,8 @@ void fast_als::calculate(int count_iterations)
 		time_t end =  time(0);
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
+		MSE();
 
-//		calc_error();
 	}
 
 	/// serialize(std::cout);
@@ -148,16 +153,6 @@ void fast_als::solve(
 {
 	fast_als::features_vector g = calc_g(in_v, in_size, _count_features);
 
-	/*std::cerr << "\nG final: \n";
-	for (int i = 0; i < _count_features; i++)
-	{
-		for (int j = 0; j < _count_features; j++)
-		{
-			std::cerr << g[i * _count_features + j] << "\t";
-		}
-		std::cerr << "\n";
-	}*/
-
 	for (int i = 0; i < out_size; i++)
 	{
 		calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, out_size, _count_features, g, i);
@@ -166,82 +161,56 @@ void fast_als::solve(
 
 fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_size, int _count_features)
 {
-
-	/*std::cerr << "original A matrix\n";
-	for (int i = 0; i < in_size; i++)
-	{
-		for (int j = 0; j < _count_features; j++)
-		{
-			std::cerr << in_v[i * _count_features + j] << "\t";
-		}
-		std::cerr << "\n";
-	}*/
-
 	arma::fmat A(in_v);
-//	A.reshape(in_size, _count_features);
 	A.reshape(_count_features, in_size);
 	A = A.t();
 
-	//std::cerr << "\nA arma matrix: " << std::endl;
-	//A.print();
-
-
+//	std::cerr << "\nA arma matrix: " << std::endl;
+//	A.print();
 
 	A = A.t() * A;
 
-
-	//std::cerr << "\nAt*A matrix: " << std::endl;
-	//A.print();
+//	std::cerr << "\nAt*A matrix: " << std::endl;
+//	A.print();
 
 	arma::fvec eigval;
 	arma::fmat eigvec;
 
 	arma::eig_sym(eigval, eigvec, A);
 
-	//std::cerr << "\neigval matrix: " << std::endl;
-	//eigval = arma::abs(eigval);
+//	std::cerr << "\neigval matrix: " << std::endl;
+//	eigval = arma::abs(eigval);
 	for (unsigned int i = 0; i < eigval.size(); i++)
 	{
-		if (fabs(eigval[i]) < 1e-5)
+		if (fabs(eigval[i]) < EPS)
 		{
 			eigval[i] = 0;
 		}
 	}
-	//eigval.print();
-
+//	eigval.print();
 
 	for (unsigned int i = 0; i < eigvec.size(); i++)
 	{
-		if (fabs(eigvec[i]) < 1e-5)
+		if (fabs(eigvec[i]) < EPS)
 		{
 			eigvec[i] = 0;
 		}
 	}
 
-
-	//std::cerr << "\neigvec matrix: " << std::endl;
-	//eigvec.print();
-
+//	std::cerr << "\neigvec matrix: " << std::endl;
+//	eigvec.print();
 
 	arma::fmat lam_sqrt(arma::diagmat(arma::sqrt(eigval)));
 
 //	std::cerr << "\nlam matrix: " << std::endl;
 //	lam_sqrt.print();
 
-
-
 	arma::fmat G = lam_sqrt * eigvec.t();
 
-	//std::cerr << "\nG matrix: " << std::endl;
-	//G.print();
+//	std::cerr << "\nG matrix: " << std::endl;
+//	G.print();
 
-
-	arma::fvec gg = arma::vectorise(G.t());
-	//std::cerr << "\ngg vec: " << std::endl;
-	//gg.print();
-
-
-	return arma::conv_to<fast_als::features_vector>::from(gg);
+	return arma::conv_to<fast_als::features_vector>::from(arma::vectorise(G.t()));
 }
 
 void fast_als::calc_ridge_regression(
@@ -280,11 +249,6 @@ void fast_als::calc_ridge_regression(
 		errors[in_size + i] = -sum;
 	}
 
-	/*for (int i = 0; i < count_samples; i++)
-	{
-		std::cerr << "errors i: " << i << " = " << errors[i] << std::endl;
-	}*/
-
 	for (int k = 0; k < _count_features; k++)
 	{
 		for (int i = 0; i < in_size; i++)
@@ -315,8 +279,6 @@ void fast_als::calc_ridge_regression(
 
 		out_v[id * _count_features + k] = d / (_als_gamma + a);
 
-		//std::cerr << "id: " << id << " k: " << k << " d=" << d << " a=" << a << "  W=" <<  out_v[id * _count_features + k] << "\n";
-
 		for (int i = 0; i < in_size; i++)
 		{
 			errors[i] -= out_v[id * _count_features + k] * in_v[likes[i] * _count_features + k];
@@ -328,48 +290,52 @@ void fast_als::calc_ridge_regression(
 	}
 }
 
-float fast_als::MSE(int count_users, int count_items)
+void fast_als::MSE()
 {
-	std::vector<float> r(count_users * count_users, 0);
-	std::vector<int> users_for_error;
-	std::vector<int> items_for_error;
+	std::vector<float> r(_count_error_samples_for_users * _count_error_samples_for_items, 0);
 	features_vector users;
 	features_vector items;
 	srand(time(NULL));
-	users.assign(count_users * _count_features, 0);
-	for( int i=0;  i < count_users; i++)
+	users.assign(_count_error_samples_for_users * _count_features, 0);
+	if (users_for_error.size() == 0)
 	{
-		const int r1 = rand() % _count_users;
-//		const int r1 = i;
-		users_for_error.push_back(r1);
+		for(int i = 0; i < _count_error_samples_for_users; i++)
+		{
+			const int r1 = rand() % _count_users;
+//			const int r1 = i;
+			users_for_error.push_back(r1);
+		}
 	}
 
-	for(unsigned int i=0;  i < users_for_error.size(); i++)
+	for(unsigned int i = 0;  i < users_for_error.size(); i++)
 	{
 		const int r1 = users_for_error[i];
-		for( int c=0; c < _count_features; c++)
+		for( int c = 0; c < _count_features; c++)
 			users[i * _count_features + c] = _features_users[r1 * _count_features + c];
 	}
 
-	items.assign(count_items * _count_features, 0);
+	items.assign(_count_error_samples_for_items * _count_features, 0);
 
-	for( int i=0;  i < count_items; i++)
+	if (items_for_error.size() == 0)
 	{
-		const int r1 = rand() % _count_items;
-//		const int r1 = i;
-		items_for_error.push_back(r1);
+		for(int i = 0; i < _count_error_samples_for_items; i++)
+		{
+			const int r1 = rand() % _count_items;
+//			const int r1 = i;
+			items_for_error.push_back(r1);
+		}
 	}
 
-	for(unsigned int i=0;  i < items_for_error.size(); i++)
+	for(unsigned int i = 0; i < items_for_error.size(); i++)
 	{
 		const int r1 = items_for_error[i];
-		for( int c=0; c < _count_features; c++)
+		for( int c = 0; c < _count_features; c++)
 			items[i * _count_features + c] = _features_items[r1 * _count_features + c];
 	}
 
-	for (int i = 0; i < count_users; i++)
+	for (int i = 0; i < _count_error_samples_for_users; i++)
 	{
-		for (int j = 0; j < count_items; j++)
+		for (int j = 0; j < _count_error_samples_for_items; j++)
 		{
 			int user_id = users_for_error[i];
 			int item_id = items_for_error[j];
@@ -378,7 +344,7 @@ float fast_als::MSE(int count_users, int count_items)
 			{
 				if (_user_likes[user_id][k] == item_id)
 				{
-					r[i * count_items + j] = 1;
+					r[i * _count_error_samples_for_items + j] = 1;
 				}
 			}
 		}
@@ -387,27 +353,28 @@ float fast_als::MSE(int count_users, int count_items)
 
 
 	arma::fmat P(users);
-	P.reshape(_count_features, count_users);
+	P.reshape(_count_features, _count_error_samples_for_users);
 	P = P.t();
 
 	arma::fmat Q(items);
-	Q.reshape(_count_features, count_items);
+	Q.reshape(_count_features, _count_error_samples_for_items);
 
 
 	arma::fmat predict = P * Q;
 
 	float mse = 0;
-	for (int i = 0; i < count_users; i++)
+	for (int i = 0; i < _count_error_samples_for_users; i++)
 	{
-		for (int j = 0; j < count_items; j++)
+		for (int j = 0; j < _count_error_samples_for_items; j++)
 		{
-			mse += (r[i * count_items + j] - predict.at(i, j)) * (r[i * count_items + j] - predict.at(i, j));
+			mse += (r[i * _count_error_samples_for_items + j] - predict.at(i, j)) * (r[i * _count_error_samples_for_items + j] - predict.at(i, j));
 		}
 	}
-	float size = count_items * count_users;
+	float size = _count_error_samples_for_items * _count_error_samples_for_users;
 	mse /= size;
 
-	return mse;
+//	std::cerr << " MSE: " << mse << std::endl;
+	std::cout << mse << std::endl;
 }
 
 

@@ -30,11 +30,13 @@ public:
 	/// <user> <item> <weight>
 	///
 	fast_als(std::istream& tuples_stream,
-		 int count_features,
-		 float alfa,
-		 float gamma,
-		 int count_samples,
-		 int likes_format);
+			int count_features,
+			float alfa,
+			float gamma,
+			int count_samples,
+			int likes_format,
+			int count_error_samples_for_users,
+			int count_error_samples_for_items);
 
 	virtual ~fast_als();
 
@@ -45,7 +47,7 @@ public:
 	///
 	virtual void calculate(int count_iterations);
 
-	virtual float MSE(int count_users, int count_items);
+	virtual void MSE();
 
 	///
 	/// Get Items features vector
@@ -129,6 +131,14 @@ private:
 
 	float _als_alfa;
 	float _als_gamma;
+
+	///
+	/// Count samples for calculate error
+	///
+	int _count_error_samples_for_users;
+	std::vector<int>   users_for_error;
+	int _count_error_samples_for_items;
+	std::vector<int>   items_for_error;
 };
 
 #endif /* FAST_ALS_H_ */

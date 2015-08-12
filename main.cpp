@@ -8,11 +8,11 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	string output_file_name; // = "out.txt";
+	string output_file_name;
 	string likes_file_name;
 	int features_size = 50;
 	int csimples = 0;
-	int cit = 10;
+	int cit = 20;
 	int likes_format = 0;
 	float als_alfa = 5;
 	int samples_for_calc_error_users = 0;
@@ -80,11 +80,11 @@ int main(int argc, char *argv[])
 	std::istream& in((likes_file_name.length() == 0) ? std::cin : f_stream);
 
 	std::cerr << " Count ALS iteration " << cit << std::endl;
-	std::cerr << " Start Matrix Factorization - ALS " << std::endl;
+	std::cerr << " Start Matrix Factorization - Fast ALS " << std::endl;
 	std::cerr << " Input file format -  " << likes_format << std::endl;
 	std::cerr << " ALS alfa -  " << als_alfa << std::endl;
 
-	fast_als als_alg(in, features_size, als_alfa, 0.01, csimples, likes_format);
+	fast_als als_alg(in, features_size, als_alfa, 0.01, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
 
 	struct timeval t1;
 	struct timeval t2;
@@ -93,13 +93,7 @@ int main(int argc, char *argv[])
 	als_alg.calculate(cit);
 	gettimeofday(&t2, NULL);
 
-
-
-	std::cerr << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
-
-	float mse = als_alg.MSE(samples_for_calc_error_users, samples_for_calc_error_items);
-	std::cerr << " MSE: " << mse << std::endl;
-
+	std::cout << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
 
 	std::ofstream fout_users((output_file_name+".ufea").c_str());
 	als_alg.serialize_users(fout_users);
