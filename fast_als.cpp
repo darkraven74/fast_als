@@ -3,8 +3,6 @@
 #include <cmath>
 #include <chrono>
 
-#define EPS 1e-6
-
 fast_als::fast_als(std::istream& tuples_stream,
 		int count_features,
 		float alfa,
@@ -104,12 +102,11 @@ void fast_als::fill_rnd(features_vector& in_v, int in_size)
 {
 	std::cerr << "Generate random features.. ";
 	std::default_random_engine generator(time(NULL));
-//	std::default_random_engine generator(31);
-	std::uniform_real_distribution<float> distribution(0, 1);
+	std::normal_distribution<float> distribution(0, 1);
 
 	for (int i = 0; i < in_size * _count_features; i++)
 	{
-		in_v[i] = sqrt(1.0 / _count_features) * distribution(generator);
+		in_v[i] = distribution(generator);
 	}
 
 	std::cerr << "done" << std::endl;
@@ -118,7 +115,7 @@ void fast_als::fill_rnd(features_vector& in_v, int in_size)
 void fast_als::calculate(int count_iterations)
 {
 	fill_rnd(_features_users, _count_users);
-	//fill_rnd(_features_items, _count_items);
+//	fill_rnd(_features_items, _count_items);
 
 
 	for(int i = 0; i < count_iterations; i++)
@@ -178,24 +175,8 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
 
 	arma::eig_sym(eigval, eigvec, A);
 
-//	std::cerr << "\neigval matrix: " << std::endl;
-//	eigval = arma::abs(eigval);
-	for (unsigned int i = 0; i < eigval.size(); i++)
-	{
-		if (fabs(eigval[i]) < EPS)
-		{
-			eigval[i] = 0;
-		}
-	}
+//	std::cerr << "\neigval matrix: \n" << std::endl;
 //	eigval.print();
-
-	for (unsigned int i = 0; i < eigvec.size(); i++)
-	{
-		if (fabs(eigvec[i]) < EPS)
-		{
-			eigvec[i] = 0;
-		}
-	}
 
 //	std::cerr << "\neigvec matrix: " << std::endl;
 //	eigvec.print();
@@ -301,8 +282,8 @@ void fast_als::MSE()
 	{
 		for(int i = 0; i < _count_error_samples_for_users; i++)
 		{
-//			const int r1 = rand() % _count_users;
-			const int r1 = i;
+			const int r1 = rand() % _count_users;
+//			const int r1 = i;
 			users_for_error.push_back(r1);
 		}
 	}
@@ -320,8 +301,8 @@ void fast_als::MSE()
 	{
 		for(int i = 0; i < _count_error_samples_for_items; i++)
 		{
-//			const int r1 = rand() % _count_items;
-			const int r1 = i;
+			const int r1 = rand() % _count_items;
+//			const int r1 = i;
 			items_for_error.push_back(r1);
 		}
 	}
