@@ -48,6 +48,7 @@ public:
 	virtual void calculate(int count_iterations);
 
 	virtual void MSE();
+	virtual void hit_rate();
 
 	///
 	/// Get Items features vector
@@ -108,6 +109,8 @@ protected:
 			features_vector& g,
 			int id);
 
+	void generate_test_set();
+
 private:
 	///
 	/// features vectors, for users and items
@@ -139,6 +142,8 @@ private:
 	std::vector<int>   users_for_error;
 	int _count_error_samples_for_items;
 	std::vector<int>   items_for_error;
+
+	std::vector<std::pair<int, int> > test_set;
 };
 
 #endif /* FAST_ALS_H_ */

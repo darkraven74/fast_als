@@ -2,6 +2,10 @@
 #include <armadillo>
 #include <cmath>
 #include <chrono>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <ctime>
 
 fast_als::fast_als(std::istream& tuples_stream,
 		int count_features,
@@ -19,7 +23,29 @@ fast_als::fast_als(std::istream& tuples_stream,
 		_count_error_samples_for_users(count_error_samples_for_users),
 		_count_error_samples_for_items(count_error_samples_for_items)
 {
+	srand(time(NULL));
+
 	read_likes(tuples_stream, count_samples, likes_format);
+
+	/*std::map<unsigned long, int> m;
+
+	for (int i = 0; i < _count_users; i++)
+	{
+		m.insert(std::make_pair(i, _user_likes[i].size()));
+	}
+
+	for (std::map<unsigned long, int>::iterator it = _users_map.begin(); it != _users_map.end(); it++)
+	{
+		unsigned long uid = it->first;
+		int array_id = it->second;
+		int size = m[array_id];
+
+		if (size > 500)
+			std::cout << uid << " " << size << std::endl;
+	}
+	*/
+
+	generate_test_set();
 
 	_features_users.assign(_count_users * _count_features, 0 );
 	_features_items.assign(_count_items * _count_features, 0 );
@@ -32,6 +58,29 @@ fast_als::~fast_als()
 
 void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int format)
 {
+
+	/*
+	std::ifstream f_stream("/home/darkraven/Prog/Mail.ru/als/als_data/500map.txt");
+	std::istream& in_good_id(f_stream);
+
+
+	std::ofstream small_data("small_data.txt");
+
+
+	std::set<unsigned long> ss;
+
+	std::string gg;
+	while(getline(in_good_id, gg))
+	{
+		std::istringstream line_stream(gg);
+		std::string value;
+		getline(line_stream, value);
+		ss.insert(atol(value.c_str()));
+	}
+	 */
+
+
+
 	std::string line;
 	char const tab_delim = '\t';
 	int i = 0;
@@ -42,6 +91,12 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 		std::string value;
 		getline(line_stream, value, tab_delim);
 		unsigned long uid = atol(value.c_str());
+
+		/*if (ss.count(uid) != 0)
+		{
+			small_data << line << std::endl;
+		}*/
+
 		if (_users_map.find(uid) == _users_map.end())
 		{
 			_users_map[uid] = _count_users;
@@ -95,7 +150,33 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 		if(count_simples && i > count_simples) break;
 	}
 
-	std::cerr << " u: " << _count_users << " i: " << _count_items << std::endl;
+
+	//small_data.close();
+
+	std::cerr.flush();
+	std::cerr << "\ntotal:\n u: " << _count_users << " i: " << _count_items << std::endl;
+}
+
+void fast_als::generate_test_set()
+{
+	int total_size = 0;
+	for (int i = 0; i < _count_users; i++)
+	{
+		total_size += _user_likes[i].size();
+		int coin = rand() % 3;
+		if (coin == 0)
+		{
+			int size = _user_likes[i].size() / 2;
+			for (int j = 0; j < size; j++)
+			{
+				int id = rand() % _user_likes[i].size();
+				test_set.push_back(std::make_pair(i, _user_likes[i][id]));
+				_user_likes[i].erase(_user_likes[i].begin() + id);
+				_user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
+			}
+		}
+	}
+	std::cout << "test_set %: " << test_set.size() * 1.0 / total_size << std::endl;
 }
 
 void fast_als::fill_rnd(features_vector& in_v, int in_size)
@@ -103,10 +184,12 @@ void fast_als::fill_rnd(features_vector& in_v, int in_size)
 	std::cerr << "Generate random features.. ";
 	std::default_random_engine generator(time(NULL));
 	std::normal_distribution<float> distribution(0, 1);
+//	std::uniform_real_distribution<float> distribution(0, 1);
 
 	for (int i = 0; i < in_size * _count_features; i++)
 	{
 		in_v[i] = distribution(generator);
+//		in_v[i] = sqrt(1.0 / _count_features) * distribution(generator);
 	}
 
 	std::cerr << "done" << std::endl;
@@ -131,7 +214,8 @@ void fast_als::calculate(int count_iterations)
 		time_t end =  time(0);
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
-		MSE();
+		//MSE();
+		hit_rate();
 
 	}
 
@@ -282,8 +366,8 @@ void fast_als::MSE()
 	{
 		for(int i = 0; i < _count_error_samples_for_users; i++)
 		{
-			const int r1 = rand() % _count_users;
-//			const int r1 = i;
+//			const int r1 = rand() % _count_users;
+			const int r1 = i;
 			users_for_error.push_back(r1);
 		}
 	}
@@ -301,8 +385,8 @@ void fast_als::MSE()
 	{
 		for(int i = 0; i < _count_error_samples_for_items; i++)
 		{
-			const int r1 = rand() % _count_items;
-//			const int r1 = i;
+//			const int r1 = rand() % _count_items;
+			const int r1 = i;
 			items_for_error.push_back(r1);
 		}
 	}
@@ -314,7 +398,7 @@ void fast_als::MSE()
 			items[i * _count_features + c] = _features_items[r1 * _count_features + c];
 	}
 
-	for (int i = 0; i < _count_error_samples_for_users; i++)
+	/*for (int i = 0; i < _count_error_samples_for_users; i++)
 	{
 		for (int j = 0; j < _count_error_samples_for_items; j++)
 		{
@@ -329,7 +413,25 @@ void fast_als::MSE()
 				}
 			}
 		}
+	}*/
+
+	for (int i = 0; i < _count_error_samples_for_users; i++)
+	{
+		for (unsigned int k = 0; k < _user_likes[i].size(); k++)
+		{
+			if (_user_likes[i][k] < _count_error_samples_for_items)
+				r[i * _count_error_samples_for_items + _user_likes[i][k]] = 1;
+		}
 	}
+
+	/*for (unsigned int i = 0; i < test_set.size(); i++)
+	{
+		int user = test_set[i].first;
+		int item = test_set[i].second;
+
+		if (item < _count_error_samples_for_items)
+			r[user * _count_error_samples_for_items + item] = 1;
+	}*/
 
 
 
@@ -344,19 +446,75 @@ void fast_als::MSE()
 	arma::fmat predict = P * Q;
 
 	float mse = 0;
+	float size = 0;
 	for (int i = 0; i < _count_error_samples_for_users; i++)
 	{
 		for (int j = 0; j < _count_error_samples_for_items; j++)
 		{
 			if (r[i * _count_error_samples_for_items + j] == 1)
+			{
+				size++;
 				mse += (r[i * _count_error_samples_for_items + j] - predict.at(i, j)) * (r[i * _count_error_samples_for_items + j] - predict.at(i, j));
+			}
 		}
 	}
-	float size = _count_error_samples_for_items * _count_error_samples_for_users;
 	mse /= size;
 
 //	std::cerr << " MSE: " << mse << std::endl;
 	std::cout << mse << std::endl;
+}
+
+void fast_als::hit_rate()
+{
+	arma::fmat P(_features_users);
+	P.reshape(_count_features, _count_users);
+	P = P.t();
+
+	arma::fmat Q(_features_items);
+	Q.reshape(_count_features, _count_items);
+
+	arma::fmat predict = P * Q;
+
+	for (int i = 0; i < _count_users; i++)
+	{
+		for (unsigned int j = 0; j < _user_likes[i].size(); j++)
+		{
+			int item_id = _user_likes[i][j];
+			predict.at(i, item_id) = -10000000;
+		}
+	}
+
+	std::set<std::pair<int, int> > recs;
+	for (int i = 0; i < _count_users; i++)
+	{
+		arma::frowvec cur = predict.row(i);
+		std::vector<float> v = arma::conv_to<std::vector<float> >::from(cur);
+
+		for (int j = 0; j < 3; j++)
+		{
+			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
+			int item = std::distance(v.begin(), it);
+			v[item] = -10000000;
+			recs.insert(std::make_pair(i, item));
+		}
+	}
+
+	float tp = 0;
+
+	for (unsigned int i = 0; i < test_set.size(); i++)
+	{
+		int user = test_set[i].first;
+		int item = test_set[i].second;
+
+		if (recs.count(std::make_pair(user, item)))
+		{
+			tp++;
+		}
+	}
+
+	float res = tp * 1.0 / test_set.size();
+
+	std::cout << res << std::endl;
 }
 
 
