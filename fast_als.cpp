@@ -81,6 +81,7 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 
 
 
+
 	std::string line;
 	char const tab_delim = '\t';
 	int i = 0;
@@ -109,7 +110,7 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 
 		if( format == 0 )
 		{
-			getline(line_stream, value, tab_delim);
+//			getline(line_stream, value, tab_delim);
 //			unsigned long gid = atol(value.c_str());
 		}
 
@@ -159,24 +160,48 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 
 void fast_als::generate_test_set()
 {
+	/*std::ofstream out_test("out_test.txt");
+	std::ofstream out_train("out_train.txt");
+
+	out_test << "u: " << _count_users << std::endl;
+	out_test << "i: " << _count_items << std::endl;
+	*/
+
 	int total_size = 0;
 	for (int i = 0; i < _count_users; i++)
 	{
 		total_size += _user_likes[i].size();
-		int coin = rand() % 3;
-		if (coin == 0)
+		int coin = 1;
+		if (coin == 1)
 		{
-			int size = _user_likes[i].size() / 2;
-			for (int j = 0; j < size; j++)
+//			int size = _user_likes[i].size() / 2;
+			for (int j = 0; j < 10; j++)
 			{
 				int id = rand() % _user_likes[i].size();
 				test_set.push_back(std::make_pair(i, _user_likes[i][id]));
+//				out_test << i << "," << _user_likes[i][id] << "," << "1.0" << std::endl;
 				_user_likes[i].erase(_user_likes[i].begin() + id);
 				_user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
 			}
 		}
 	}
 	std::cout << "test_set %: " << test_set.size() * 1.0 / total_size << std::endl;
+	std::cout << "reco in user " << total_size* 1.0 / _count_users << std::endl;
+
+
+	/*for (int i = 0; i < _count_users; i++)
+	{
+		int size = _user_likes[i].size();
+		for (int j = 0; j < size; j++)
+		{
+			out_train << i << "," << _user_likes[i][j] << "," << "1.0" << std::endl;
+		}
+	}
+
+
+	out_test.close();
+	out_train.close();
+	*/
 }
 
 void fast_als::fill_rnd(features_vector& in_v, int in_size)
@@ -466,6 +491,126 @@ void fast_als::MSE()
 
 void fast_als::hit_rate()
 {
+	/*
+	std::ifstream train("/home/darkraven/Prog/Mail.ru/fast_als/fast_als/Release/out_train1.txt");
+	std::istream& str(train);
+	std::set<std::pair<int, int> > set_tr;
+
+	char const delim = ',';
+
+	std::string gg;
+	while(getline(str, gg))
+	{
+		std::istringstream line_stream(gg);
+		std::string value;
+		getline(line_stream, value, delim);
+		int user = atoi(value.c_str());
+		getline(line_stream, value, delim);
+		set_tr.insert(std::make_pair(user, atoi(value.c_str())));
+	}
+
+
+	std::ifstream test("/home/darkraven/Prog/Mail.ru/fast_als/fast_als/Release/out_test1.txt");
+	std::istream& str2(test);
+	std::set<std::pair<int, int> > set_te;
+
+
+	while(getline(str2, gg))
+	{
+		std::istringstream line_stream(gg);
+		std::string value;
+		getline(line_stream, value, delim);
+		int user = atoi(value.c_str());
+		getline(line_stream, value, delim);
+		set_te.insert(std::make_pair(user, atoi(value.c_str())));
+	}
+
+
+	std::vector<float> predict(943 * 1682);
+
+
+
+	std::ifstream pred("/home/darkraven/Prog/Mail.ru/fast_als/fast_als/Release/out_matr.txt");
+	std::istream& str3(pred);
+
+	int u = 0;
+	while(getline(str3, gg))
+	{
+		std::istringstream line_stream(gg);
+		std::string value;
+		for (int i = 0; i < 1682; i++)
+		{
+			getline(line_stream, value);
+			predict[u * 1682 + i] = atof(value.c_str());
+		}
+		u++;
+	}
+
+
+	for (std::set<std::pair<int, int> >::iterator it = set_tr.begin(); it != set_tr.end(); it++)
+	{
+		predict[it->first * 1682 + it->second] = -1000000;
+	}
+
+
+
+	std::set<std::pair<int, int> > recs;
+	for (int i = 0; i < _count_users; i++)
+	{
+
+		std::vector<float> v(predict.begin() + i * 1682, predict.begin() + (i + 1) * 1682);
+
+
+		for (int j = 0; j < 100; j++)
+		{
+			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
+			int item = std::distance(v.begin(), it);
+			v[item] = -1000000;
+			recs.insert(std::make_pair(i, item));
+		}
+	}
+
+	float sum = 0;
+	std::set<int> test_u;
+
+	for (int u = 0; u < _count_users; u++)
+	{
+
+		float tp = 0;
+		float size = 0;
+
+		for (std::set<std::pair<int, int> >::iterator it = set_te.begin(); it != set_te.end(); it++)
+		{
+			int user = it->first;
+			int item = it->second;
+
+			test_u.insert(user);
+			if (user == u)
+			{
+				size++;
+			}
+
+			if (user == u && recs.count(std::make_pair(user, item)))
+			{
+				tp++;
+			}
+		}
+
+		if (size != 0)
+			sum += tp / size;
+
+	}
+
+	float res = sum * 1.0 / test_u.size();
+//	float res = tp * 1.0 / test_set.size();
+
+	std::cout << res << std::endl;
+
+	*/
+
+//	return;
+//*******************************************************
+
 	arma::fmat P(_features_users);
 	P.reshape(_count_features, _count_users);
 	P = P.t();
@@ -480,7 +625,7 @@ void fast_als::hit_rate()
 		for (unsigned int j = 0; j < _user_likes[i].size(); j++)
 		{
 			int item_id = _user_likes[i][j];
-			predict.at(i, item_id) = -10000000;
+			predict.at(i, item_id) = 0;
 		}
 	}
 
@@ -490,31 +635,51 @@ void fast_als::hit_rate()
 		arma::frowvec cur = predict.row(i);
 		std::vector<float> v = arma::conv_to<std::vector<float> >::from(cur);
 
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < 10; j++)
 		{
 			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
 			int item = std::distance(v.begin(), it);
-			v[item] = -10000000;
+			v[item] = 0;
 			recs.insert(std::make_pair(i, item));
 		}
 	}
 
-	float tp = 0;
+	float sum = 0;
+	std::set<int> test_u;
 
-	for (unsigned int i = 0; i < test_set.size(); i++)
+	for (int u = 0; u < _count_users; u++)
 	{
-		int user = test_set[i].first;
-		int item = test_set[i].second;
 
-		if (recs.count(std::make_pair(user, item)))
+		float tp = 0;
+		float size = 0;
+
+		for (unsigned int i = 0; i < test_set.size(); i++)
 		{
-			tp++;
+			int user = test_set[i].first;
+			int item = test_set[i].second;
+
+			test_u.insert(user);
+			if (user == u)
+			{
+				size++;
+			}
+
+			if (user == u && recs.count(std::make_pair(user, item)))
+			{
+				tp++;
+			}
 		}
+
+		if (size != 0)
+			sum += tp / size;
+
 	}
 
-	float res = tp * 1.0 / test_set.size();
+	float res = sum * 1.0 / test_u.size();
 
 	std::cout << res << std::endl;
+
+
 }
 
 
