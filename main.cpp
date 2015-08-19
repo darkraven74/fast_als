@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 	string likes_file_name;
 	int features_size = 50;
 	int csimples = 0;
-	int cit = 20;
+	int cit = 10;
 	int likes_format = 0;
 	float als_alfa = 5;
 	int samples_for_calc_error_users = 0;
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 	std::cerr << " Input file format -  " << likes_format << std::endl;
 	std::cerr << " ALS alfa -  " << als_alfa << std::endl;
 
-	fast_als als_alg(in, features_size, als_alfa, 0.01, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
+	fast_als als_alg(in, features_size, als_alfa, 40, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
 
 	struct timeval t1;
 	struct timeval t2;
