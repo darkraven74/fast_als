@@ -45,7 +45,7 @@ fast_als::fast_als(std::istream& tuples_stream,
 	}
 	*/
 
-	generate_test_set();
+	//generate_test_set();
 
 	_features_users.assign(_count_users * _count_features, 0 );
 	_features_items.assign(_count_items * _count_features, 0 );
@@ -202,7 +202,7 @@ void fast_als::generate_test_set()
 		if (coin == 1)
 		{
 			int size = _user_likes[i].size();
-			for (int j = 0; j < size / 2; j++)
+			for (int j = 0; j < size / 2;)
 			{
 				int id = rand() % _user_likes[i].size();
 //				int id = j;
@@ -213,12 +213,12 @@ void fast_als::generate_test_set()
 					{
 						std::cout << "bad user! " << i << std::endl;
 					}*/
-//					continue;
+					continue;
 				}
 				test_set.push_back(std::make_pair(i, _user_likes[i][id]));
 //				out_test << i << "," << _user_likes[i][id] << "," << "1" << std::endl;
 
-				for (int k = 0; k < _item_likes[_user_likes[i][id]].size(); k++)
+				for (unsigned int k = 0; k < _item_likes[_user_likes[i][id]].size(); k++)
 				{
 					if (_item_likes[_user_likes[i][id]][k] == i)
 					{
@@ -230,13 +230,13 @@ void fast_als::generate_test_set()
 				_user_likes[i].erase(_user_likes[i].begin() + id);
 				_user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
 				_user_likes_weights_temp[i].erase(_user_likes_weights_temp[i].begin() + id);
-//				break;
+				break;
 			}
 		}
 	}
 //	std::cout << "test_set size" << test_set.size() << std::endl;
-	std::cout << "test_set %: " << test_set.size() * 1.0 / total_size << std::endl;
-	std::cout << "reco in user " << total_size* 1.0 / _count_users << std::endl;
+//	std::cout << "test_set %: " << test_set.size() * 1.0 / total_size << std::endl;
+//	std::cout << "reco in user " << total_size* 1.0 / _count_users << std::endl;
 
 
 	/*out_train << "user,item,rating" << std::endl;
@@ -294,7 +294,7 @@ void fast_als::calculate(int count_iterations)
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
 		//MSE();
-		hit_rate();
+//		hit_rate();
 
 	}
 
@@ -546,7 +546,7 @@ void fast_als::MSE()
 void fast_als::hit_rate()
 {
 
-	std::ifstream train("out_train.txt");
+	/*std::ifstream train("out_train.txt");
 	std::istream& str(train);
 	std::set<std::pair<int, int> > set_tr;
 
@@ -603,14 +603,6 @@ void fast_als::hit_rate()
 		std::string value;
 		getline(line_stream, value, delim);
 		int user = atoi(value.c_str());
-		if (user > cur_user)
-		{
-			cur_user++;
-		}
-		if (user < cur_user)
-		{
-			continue;
-		}
 		getline(line_stream, value, delim);
 		int item = atoi(value.c_str());
 		getline(line_stream, value, delim);
@@ -621,17 +613,16 @@ void fast_als::hit_rate()
 		{
 			sum += 1.0 / rank;
 			cur_user++;
-			c_u++;
 		}
-//		rec.insert(std::make_pair(user, item));
+		rec.insert(std::make_pair(user, item));
 	}
 
-	float mrr = sum / _count_users;
-	std::cout << mrr << std::endl;
+//	float mrr = sum / _count_users;
+//	std::cout << mrr << std::endl;
 
 
 
-/*	float tp = 0;
+	/*float tp = 0;
 	for (std::set<std::pair<int, int> >::iterator it = rec.begin(); it != rec.end(); it++)
 	{
 		if (test_set_set.count(*it))
@@ -686,9 +677,9 @@ void fast_als::hit_rate()
 			rec.insert(std::make_pair(i, item));
 		}
 	}*/
-/*
+
 	//hit-rate10 calc
-	float hit = 0;
+	/*float hit = 0;
 	for (std::set<std::pair<int, int> >::iterator it = set_te.begin(); it != set_te.end(); it++)
 	{
 		if (rec.count(*it))
@@ -701,9 +692,9 @@ void fast_als::hit_rate()
 	std::cout << "rec size: " << rec.size() << " test size: " << set_te.size() << std::endl;
 	std::cout << "Hit-rate: " << hr << std::endl;
 
-*/
-	return;
 
+	return;
+*/
 //*******************************************************
 
 	arma::fmat P(_features_users);
@@ -724,7 +715,7 @@ void fast_als::hit_rate()
 		}
 	}
 
-//	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
+	std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
 
 	std::set<std::pair<int, int> > recs;
 //	float sum = 0;
@@ -733,7 +724,7 @@ void fast_als::hit_rate()
 		arma::frowvec cur = predict.row(i);
 		std::vector<float> v = arma::conv_to<std::vector<float> >::from(cur);
 
-		for (int j = 0; j < 20; j++)
+		for (int j = 0; j < 10; j++)
 		{
 			std::vector<float>::iterator it = std::max_element(v.begin(), v.end());
 			int item = std::distance(v.begin(), it);
@@ -781,7 +772,7 @@ void fast_als::hit_rate()
 	}*/
 
 	//hit-rate10 calc
-	/*float tp = 0;
+	float tp = 0;
 	for (std::set<std::pair<int, int> >::iterator it = test_set_set.begin(); it != test_set_set.end(); it++)
 	{
 		if (recs.count(*it))
@@ -790,7 +781,7 @@ void fast_als::hit_rate()
 		}
 	}
 	float hr10 = tp * 1.0 / test_set_set.size();
-*/
+
 
 	//prec calc
 	/*std::set<std::pair<int, int> > test_set_set(test_set.begin(), test_set.end());
@@ -806,7 +797,7 @@ void fast_als::hit_rate()
 */
 //	float res = sum * 1.0 / test_u.size();
 
-//	std::cout << p << std::endl;
+	std::cout << hr10 << std::endl;
 
 
 }

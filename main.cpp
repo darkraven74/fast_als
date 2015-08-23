@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+
 	std::ifstream f_stream(likes_file_name.c_str() );
 	std::istream& in((likes_file_name.length() == 0) ? std::cin : f_stream);
 
@@ -84,7 +85,10 @@ int main(int argc, char *argv[])
 	std::cerr << " Input file format -  " << likes_format << std::endl;
 	std::cerr << " ALS alfa -  " << als_alfa << std::endl;
 
+
+
 	fast_als als_alg(in, features_size, als_alfa, 40, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
+
 
 	struct timeval t1;
 	struct timeval t2;
@@ -110,6 +114,7 @@ int main(int argc, char *argv[])
 	std::ofstream fout_imap((output_file_name+".imap").c_str());
 	als_alg.serialize_items_map(fout_imap);
 	fout_imap.close();
+
 
 	return 0;
 }
