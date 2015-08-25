@@ -45,7 +45,7 @@ fast_als::fast_als(std::istream& tuples_stream,
 	}
 	*/
 
-	//generate_test_set();
+	generate_test_set();
 
 	_features_users.assign(_count_users * _count_features, 0 );
 	_features_items.assign(_count_items * _count_features, 0 );
@@ -166,7 +166,7 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 		_item_likes[item].push_back( user );
 		_item_likes_weights[item].push_back( weight );
 
-		if (i % 10000 == 0) std::cerr << i << " u: " << _count_users << " i: " << _count_items << "\r";
+		if (i % 10000 == 0) std::cout << i << " u: " << _count_users << " i: " << _count_items << "\r";
 
 		///std::cout << "u:" << user << " -> " << item << std::endl;
 		///std::cout << "i:" << item << " -> " << user << std::endl;
@@ -181,8 +181,8 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 
 	//small_data.close();
 
-	std::cerr.flush();
-	std::cerr << "\ntotal:\n u: " << _count_users << " i: " << _count_items << std::endl;
+	std::cout.flush();
+	std::cout << "\ntotal:\n u: " << _count_users << " i: " << _count_items << std::endl;
 }
 
 void fast_als::generate_test_set()
@@ -291,10 +291,10 @@ void fast_als::calculate(int count_iterations)
 		solve(_user_likes.begin(), _user_likes_weights.begin(), _features_items, _count_items, _features_users, _count_users, _count_features);
 
 		time_t end =  time(0);
-		std::cerr << "==== Iteration time : " << end - start << std::endl;
+//		std::cout << "==== Iteration time : " << end - start << std::endl;
 
 		//MSE();
-//		hit_rate();
+		hit_rate();
 
 	}
 
@@ -311,12 +311,19 @@ void fast_als::solve(
 		int out_size,
 		int _count_features)
 {
+	time_t start =  time(0);
 	fast_als::features_vector g = calc_g(in_v, in_size, _count_features);
+	time_t end =  time(0) - start;
+//	std::cout << "calc g: " << end << std::endl;
 
+	start = time(0);
 	for (int i = 0; i < out_size; i++)
 	{
 		calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, out_size, _count_features, g, i);
 	}
+	end = time(0) - start;
+//	std::cout << "calc regression: " << end << std::endl;
+
 }
 
 fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_size, int _count_features)
@@ -330,19 +337,40 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
 
 	A = A.t() * A;
 
-//	std::cerr << "\nAt*A matrix: " << std::endl;
-//	A.print();
+
+
+	std::cout << "\nAt*A matrix: " << std::endl;
+	A.print();
 
 	arma::fvec eigval;
 	arma::fmat eigvec;
 
 	arma::eig_sym(eigval, eigvec, A);
 
-//	std::cerr << "\neigval matrix: \n" << std::endl;
+//	std::cout << "\neigval matrix: \n" << std::endl;
 //	eigval.print();
 
-//	std::cerr << "\neigvec matrix: " << std::endl;
+//	std::cout << "\neigvec matrix: " << std::endl;
 //	eigvec.print();
+
+
+	arma::fmat U;
+	arma::fvec s;
+	arma::fmat V;
+
+	arma::svd(U,s,V,A);
+
+//	std::cout << "\nU matrix (eigvec): \n" << std::endl;
+//	U.print();
+
+//	std::cout << "\ns vector (eigval): \n" << std::endl;
+//	s.print();
+
+//	std::cout << "\nV matrix: \n" << std::endl;
+//	V.print();
+
+
+	arma::fmat lam_sqrt2(arma::diagmat(arma::sqrt(s)));
 
 	arma::fmat lam_sqrt(arma::diagmat(arma::sqrt(eigval)));
 
@@ -351,10 +379,16 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
 
 	arma::fmat G = lam_sqrt * eigvec.t();
 
-//	std::cerr << "\nG matrix: " << std::endl;
+	arma::fmat G2 = lam_sqrt2 * U.t();
+
+//	std::cout << "\nG matrix: " << std::endl;
 //	G.print();
 
-	return arma::conv_to<fast_als::features_vector>::from(arma::vectorise(G.t()));
+
+//	std::cout << "\nG2 matrix: " << std::endl;
+//	G2.print();
+
+	return arma::conv_to<fast_als::features_vector>::from(arma::vectorise(G2.t()));
 }
 
 void fast_als::calc_ridge_regression(

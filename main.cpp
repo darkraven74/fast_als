@@ -76,6 +76,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
+    /*af::setDevice(0);
+    af::array A = randu(5,5, f32);
+    af::array evalues, evectors;
+    af::eigen(evalues, evectors, A);
+    af_print(evalues);
+    af_print(evectors);
+
+
+    return 0;
+     */
 
 	std::ifstream f_stream(likes_file_name.c_str() );
 	std::istream& in((likes_file_name.length() == 0) ? std::cin : f_stream);
@@ -87,7 +97,7 @@ int main(int argc, char *argv[])
 
 
 
-	fast_als als_alg(in, features_size, als_alfa, 40, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
+	fast_als als_alg(in, features_size, als_alfa, 30, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
 
 
 	struct timeval t1;
@@ -99,7 +109,7 @@ int main(int argc, char *argv[])
 
 	std::cout << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
 
-	std::ofstream fout_users((output_file_name+".ufea").c_str());
+	/*std::ofstream fout_users((output_file_name+".ufea").c_str());
 	als_alg.serialize_users(fout_users);
 	fout_users.close();
 
@@ -114,7 +124,7 @@ int main(int argc, char *argv[])
 	std::ofstream fout_imap((output_file_name+".imap").c_str());
 	als_alg.serialize_items_map(fout_imap);
 	fout_imap.close();
-
+	*/
 
 	return 0;
 }
