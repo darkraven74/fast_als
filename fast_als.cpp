@@ -23,7 +23,8 @@ fast_als::fast_als(std::istream& tuples_stream,
 		_count_error_samples_for_users(count_error_samples_for_users),
 		_count_error_samples_for_items(count_error_samples_for_items)
 {
-	srand(time(NULL));
+//	srand(time(NULL));
+	srand(34);
 
 	read_likes(tuples_stream, count_samples, likes_format);
 
@@ -261,7 +262,8 @@ void fast_als::generate_test_set()
 void fast_als::fill_rnd(features_vector& in_v, int in_size)
 {
 	std::cerr << "Generate random features.. ";
-	std::default_random_engine generator(time(NULL));
+//	std::default_random_engine generator(time(NULL));
+	std::default_random_engine generator(34);
 	std::normal_distribution<float> distribution(0, 1);
 //	std::uniform_real_distribution<float> distribution(0, 1);
 
@@ -339,8 +341,8 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
 
 
 
-	std::cout << "\nAt*A matrix: " << std::endl;
-	A.print();
+//	std::cout << "\nAt*A matrix: " << std::endl;
+//	A.print();
 
 	arma::fvec eigval;
 	arma::fmat eigvec;
