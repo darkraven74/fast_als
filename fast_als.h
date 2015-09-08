@@ -7,7 +7,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
-#include <random>
+//#include <random>
 
 class fast_als {
 public:
@@ -48,7 +48,7 @@ public:
 	virtual void calculate(int count_iterations);
 
 	virtual void MSE();
-	virtual void hit_rate();
+	virtual float hit_rate();
 
 	///
 	/// Get Items features vector

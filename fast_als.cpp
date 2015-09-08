@@ -1,7 +1,7 @@
 #include "fast_als.h"
 #include <armadillo>
 #include <cmath>
-#include <chrono>
+//#include <chrono>
 #include <algorithm>
 #include <set>
 #include <map>
@@ -46,7 +46,7 @@ fast_als::fast_als(std::istream& tuples_stream,
 	}
 	*/
 
-	generate_test_set();
+//	generate_test_set();
 
 	_features_users.assign(_count_users * _count_features, 0 );
 	_features_items.assign(_count_items * _count_features, 0 );
@@ -117,7 +117,7 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 
 		if( format == 0 )
 		{
-//			getline(line_stream, value, tab_delim);
+			getline(line_stream, value, tab_delim);
 //			unsigned long gid = atol(value.c_str());
 		}
 
@@ -263,13 +263,14 @@ void fast_als::fill_rnd(features_vector& in_v, int in_size)
 {
 	std::cerr << "Generate random features.. ";
 //	std::default_random_engine generator(time(NULL));
-	std::default_random_engine generator(34);
-	std::normal_distribution<float> distribution(0, 1);
+//	std::default_random_engine generator(34);
+//	std::normal_distribution<float> distribution(0, 1);
 //	std::uniform_real_distribution<float> distribution(0, 1);
 
 	for (int i = 0; i < in_size * _count_features; i++)
 	{
-		in_v[i] = distribution(generator);
+//		in_v[i] = distribution(generator);
+		in_v[i] = ((float)rand()/(float)RAND_MAX);
 //		in_v[i] = sqrt(1.0 / _count_features) * distribution(generator);
 	}
 
@@ -280,6 +281,8 @@ void fast_als::calculate(int count_iterations)
 {
 	fill_rnd(_features_users, _count_users);
 //	fill_rnd(_features_items, _count_items);
+
+	std::ofstream hr10("hr10.txt");
 
 
 	for(int i = 0; i < count_iterations; i++)
@@ -293,12 +296,14 @@ void fast_als::calculate(int count_iterations)
 		solve(_user_likes.begin(), _user_likes_weights.begin(), _features_items, _count_items, _features_users, _count_users, _count_features);
 
 		time_t end =  time(0);
-//		std::cout << "==== Iteration time : " << end - start << std::endl;
+		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
 		//MSE();
-		hit_rate();
+//		hr10 << hit_rate() << std::endl;
 
 	}
+
+	hr10.close();
 
 	/// serialize(std::cout);
 	/// calc_error();
@@ -315,16 +320,19 @@ void fast_als::solve(
 {
 	time_t start =  time(0);
 	fast_als::features_vector g = calc_g(in_v, in_size, _count_features);
+//	fast_als::features_vector g(_count_features * _count_features);
+//	fill_rnd(g, _count_features);
 	time_t end =  time(0) - start;
-//	std::cout << "calc g: " << end << std::endl;
+	std::cerr << "calc g: " << end << std::endl;
 
 	start = time(0);
+#pragma omp parallel for
 	for (int i = 0; i < out_size; i++)
 	{
 		calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, out_size, _count_features, g, i);
 	}
 	end = time(0) - start;
-//	std::cout << "calc regression: " << end << std::endl;
+	std::cerr << "calc regression: " << end << std::endl;
 
 }
 
@@ -344,11 +352,11 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
 //	std::cout << "\nAt*A matrix: " << std::endl;
 //	A.print();
 
-	arma::fvec eigval;
+	/*arma::fvec eigval;
 	arma::fmat eigvec;
 
 	arma::eig_sym(eigval, eigvec, A);
-
+	*/
 //	std::cout << "\neigval matrix: \n" << std::endl;
 //	eigval.print();
 
@@ -374,12 +382,12 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
 
 	arma::fmat lam_sqrt2(arma::diagmat(arma::sqrt(s)));
 
-	arma::fmat lam_sqrt(arma::diagmat(arma::sqrt(eigval)));
+//	arma::fmat lam_sqrt(arma::diagmat(arma::sqrt(eigval)));
 
 //	std::cerr << "\nlam matrix: " << std::endl;
 //	lam_sqrt.print();
 
-	arma::fmat G = lam_sqrt * eigvec.t();
+//	arma::fmat G = lam_sqrt * eigvec.t();
 
 	arma::fmat G2 = lam_sqrt2 * U.t();
 
@@ -407,13 +415,15 @@ void fast_als::calc_ridge_regression(
 	int count_samples = in_size + _count_features;
 	std::vector<float> errors(count_samples);
 
+	int out_offset = id * _count_features;
+
 	for (int i = 0; i < in_size; i++)
 	{
-		int in_id = likes[i];
+		int in_id_off = likes[i] * _count_features;
 		float sum = 0;
 		for (int j = 0; j < _count_features; j++)
 		{
-			sum += out_v[id * _count_features + j] * in_v[in_id * _count_features + j];
+			sum += out_v[out_offset + j] * in_v[in_id_off + j];
 		}
 		float c = 1 + _als_alfa * weights[i];
 		errors[i] = (c / (c - 1)) - sum;
@@ -422,25 +432,17 @@ void fast_als::calc_ridge_regression(
 	for (int i = 0; i < _count_features; i++)
 	{
 		float sum = 0;
+		int g_off = i * _count_features;
 		for (int j = 0; j < _count_features; j++)
 		{
-			sum += out_v[id * _count_features + j] * g[i * _count_features + j];
+			sum += out_v[out_offset + j] * g[g_off + j];
 		}
 		errors[in_size + i] = -sum;
 	}
 
 	for (int k = 0; k < _count_features; k++)
 	{
-		for (int i = 0; i < in_size; i++)
-		{
-			errors[i] += out_v[id * _count_features + k] * in_v[likes[i] * _count_features + k];
-		}
-		for (int i = 0; i < _count_features; i++)
-		{
-			errors[in_size + i] += out_v[id * _count_features + k] * g[i * _count_features + k];
-		}
-
-		out_v[id * _count_features + k] = 0;
+		float out_v_cur = out_v[out_offset + k];
 
 		float a = 0;
 		float d = 0;
@@ -448,24 +450,30 @@ void fast_als::calc_ridge_regression(
 		{
 			int in_id = likes[i];
 			float c = _als_alfa * weights[i];
-			a += c * in_v[in_id * _count_features + k] * in_v[in_id * _count_features + k];
-			d += c * in_v[in_id * _count_features + k] * errors[i];
+			float in_v_cur = in_v[in_id * _count_features + k];
+			a += c * in_v_cur * in_v_cur;
+			d += c * in_v_cur * (errors[i] + out_v_cur * in_v_cur);
 		}
 		for (int i = 0; i < _count_features; i++)
 		{
-			a += g[i * _count_features + k] * g[i * _count_features + k];
-			d += g[i * _count_features + k] * errors[in_size + i];
+			float g_cur = g[i * _count_features + k];
+			a += g_cur * g_cur;
+			d += g_cur * (errors[in_size + i] + out_v_cur * g_cur);
 		}
 
-		out_v[id * _count_features + k] = d / (_als_gamma + a);
+		float out_v_cur_new = d / (_als_gamma + a);
+
+		out_v[out_offset + k] = out_v_cur_new;
+
+		float out_diff = out_v_cur - out_v_cur_new;
 
 		for (int i = 0; i < in_size; i++)
 		{
-			errors[i] -= out_v[id * _count_features + k] * in_v[likes[i] * _count_features + k];
+			errors[i] += out_diff * in_v[likes[i] * _count_features + k];
 		}
 		for (int i = 0; i < _count_features; i++)
 		{
-			errors[in_size + i] -= out_v[id * _count_features + k] * g[i * _count_features + k];
+			errors[in_size + i] += out_diff * g[i * _count_features + k];
 		}
 	}
 }
@@ -579,7 +587,7 @@ void fast_als::MSE()
 	std::cout << mse << std::endl;
 }
 
-void fast_als::hit_rate()
+float fast_als::hit_rate()
 {
 
 	/*std::ifstream train("out_train.txt");
@@ -658,7 +666,7 @@ void fast_als::hit_rate()
 
 
 
-	/*float tp = 0;
+	float tp = 0;
 	for (std::set<std::pair<int, int> >::iterator it = rec.begin(); it != rec.end(); it++)
 	{
 		if (test_set_set.count(*it))
@@ -835,7 +843,7 @@ void fast_als::hit_rate()
 
 	std::cout << hr10 << std::endl;
 
-
+	return hr10;
 }
 
 
@@ -872,13 +880,15 @@ void fast_als::serialize_users(std::ostream& out)
 
 void fast_als::serialize_matrix(std::ostream& out, const float* mat, int crow, int ccol, bool id)
 {
+	char* buf = (char*)malloc(10 * sizeof(char));
 	for(int i = 0; i < ccol; i++)
 	{
 		if(id) out << i << "\t";
 
 		for(int j = 0; j < crow;  j++)
 		{
-			out << mat[i * crow + j] << (( j == crow-1)? "" : "\t");
+			sprintf(buf, "%.1f", mat[i * crow + j]);
+			out << buf << (( j == crow-1)? "" : "\t");
 		}
 		out << std::endl;
 	}
