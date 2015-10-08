@@ -123,8 +123,8 @@ int main(int argc, char *argv[])
 
 	std::ofstream fout_imap((output_file_name+".imap").c_str());
 	als_alg.serialize_items_map(fout_imap);
-	fout_imap.close();
-	*/
+	fout_imap.close();*/
+	
 
 
 	return 0;

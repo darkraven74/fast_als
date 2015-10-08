@@ -23,8 +23,8 @@ fast_als::fast_als(std::istream& tuples_stream,
 		_count_error_samples_for_users(count_error_samples_for_users),
 		_count_error_samples_for_items(count_error_samples_for_items)
 {
-//	srand(time(NULL));
-	srand(34);
+	srand(time(NULL));
+	//srand(34);
 
 	read_likes(tuples_stream, count_samples, likes_format);
 
@@ -46,7 +46,7 @@ fast_als::fast_als(std::istream& tuples_stream,
 	}
 	*/
 
-//	generate_test_set();
+	generate_test_set();
 
 	_features_users.assign(_count_users * _count_features, 0 );
 	_features_items.assign(_count_items * _count_features, 0 );
@@ -131,6 +131,7 @@ void fast_als::read_likes(std::istream& tuples_stream, int count_simples, int fo
 		{
 			getline(line_stream, value, tab_delim);
 			weight_temp = atof( value.c_str() );
+			//weight = weight_temp;
 		}
 
 		// discard ratings 3 and below
@@ -196,8 +197,10 @@ void fast_als::generate_test_set()
 
 
 	int total_size = 0;
-	for (int i = 0; i < _count_users; i++)
+	for (int idx = 0; idx < 10000; idx++)
+	//for (int i = 0; i < _count_users; i++)
 	{
+		int i = rand() % _count_users;
 		total_size += _user_likes[i].size();
 		int coin = 1;
 		if (coin == 1)
@@ -208,14 +211,10 @@ void fast_als::generate_test_set()
 				int id = rand() % _user_likes[i].size();
 //				int id = j;
 
-				if (_user_likes_weights_temp[i][id] < 4)
+				/*if (_user_likes_weights_temp[i][id] < 4)
 				{
-					/*if (j == size - 1)
-					{
-						std::cout << "bad user! " << i << std::endl;
-					}*/
 					continue;
-				}
+				}*/
 				test_set.push_back(std::make_pair(i, _user_likes[i][id]));
 //				out_test << i << "," << _user_likes[i][id] << "," << "1" << std::endl;
 
@@ -284,7 +283,9 @@ void fast_als::calculate(int count_iterations)
 
 	std::ofstream hr10("hr10.txt");
 
-
+	//openblas_set_num_threads(24);
+	//goto_set_num_threads(24);
+	omp_set_num_threads(24);
 	for(int i = 0; i < count_iterations; i++)
 	{
 		time_t start =  time(0);
@@ -299,7 +300,7 @@ void fast_als::calculate(int count_iterations)
 		std::cerr << "==== Iteration time : " << end - start << std::endl;
 
 		//MSE();
-//		hr10 << hit_rate() << std::endl;
+		hr10 << hit_rate_cpu() << std::endl;
 
 	}
 
@@ -320,13 +321,13 @@ void fast_als::solve(
 {
 	time_t start =  time(0);
 	fast_als::features_vector g = calc_g(in_v, in_size, _count_features);
-//	fast_als::features_vector g(_count_features * _count_features);
-//	fill_rnd(g, _count_features);
+	//fast_als::features_vector g(_count_features * _count_features);
+	//fill_rnd(g, _count_features);
 	time_t end =  time(0) - start;
 	std::cerr << "calc g: " << end << std::endl;
 
 	start = time(0);
-#pragma omp parallel for
+#pragma omp parallel for num_threads(24)
 	for (int i = 0; i < out_size; i++)
 	{
 		calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, out_size, _count_features, g, i);
@@ -585,6 +586,52 @@ void fast_als::MSE()
 
 //	std::cerr << " MSE: " << mse << std::endl;
 	std::cout << mse << std::endl;
+}
+
+float fast_als::hit_rate_cpu()
+{
+	float tp = 0;
+	for (int i = 0; i < test_set.size(); i++)
+	{
+		int user = test_set[i].first;
+		int item = test_set[i].second;
+		std::vector<float> predict(_count_items);
+		#pragma omp parallel for num_threads(24)
+		for (int j = 0; j < _count_items; j++)
+		{
+			float sum = 0;
+			for (int k = 0; k < _count_features; k++)
+			{
+				sum += _features_users[user * _count_features + k]
+					* _features_items[j * _count_features + k];
+			}
+			predict[j] = sum;
+		}
+
+		for (unsigned int j = 0; j < _user_likes[user].size(); j++)
+		{
+			int item_id = _user_likes[user][j];
+			predict[item_id] = -1000000;
+		}
+
+		for (int j = 0; j < 10; j++)
+		{
+			std::vector<float>::iterator it = std::max_element(predict.begin(), predict.end());
+			int top_item = std::distance(predict.begin(), it);
+			predict[top_item] = -1000000;
+			if (top_item == item)
+			{
+				tp++;
+				break;
+			}
+		}
+	}
+
+	float hr10 = tp * 1.0 / test_set.size();
+
+	std::cout << hr10 << std::endl;
+
+	return hr10;
 }
 
 float fast_als::hit_rate()

@@ -49,6 +49,7 @@ public:
 
 	virtual void MSE();
 	virtual float hit_rate();
+	virtual float hit_rate_cpu();
 
 	///
 	/// Get Items features vector
