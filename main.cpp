@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 	float als_alfa = 5;
 	int samples_for_calc_error_users = 0;
 	int samples_for_calc_error_items = 0;
+	int max_likes = 0;
 
 	for(int i = 1; i <  argc; i++)
 	{
@@ -59,8 +60,7 @@ int main(int argc, char *argv[])
 		{
 			i++;
 			als_alfa = atof(argv[i]);
-		}
-		else
+		}else
 		if( sarg == "--als-error")
 		{
 			i++;
@@ -73,19 +73,13 @@ int main(int argc, char *argv[])
 				samples_for_calc_error_users = atoi(samples.substr(0,pos).c_str());
 				samples_for_calc_error_items = atoi(samples.substr(pos+1).c_str());
 			}
+		}else
+		if( sarg == "--max-likes")
+		{
+			i++;
+			max_likes = atoi(argv[i]);
 		}
 	}
-
-    /*af::setDevice(0);
-    af::array A = randu(5,5, f32);
-    af::array evalues, evectors;
-    af::eigen(evalues, evectors, A);
-    af_print(evalues);
-    af_print(evectors);
-
-
-    return 0;
-     */
 
 	std::ifstream f_stream(likes_file_name.c_str() );
 	std::istream& in((likes_file_name.length() == 0) ? std::cin : f_stream);
@@ -97,7 +91,8 @@ int main(int argc, char *argv[])
 
 
 
-	fast_als als_alg(in, features_size, als_alfa, 30, csimples, likes_format, samples_for_calc_error_users, samples_for_calc_error_items);
+	fast_als als_alg(in, features_size, als_alfa, 30, csimples, likes_format, samples_for_calc_error_users,
+			samples_for_calc_error_items, max_likes);
 
 
 	struct timeval t1;

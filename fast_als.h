@@ -7,7 +7,6 @@
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
-//#include <random>
 
 class fast_als {
 public:
@@ -36,7 +35,8 @@ public:
 			int count_samples,
 			int likes_format,
 			int count_error_samples_for_users,
-			int count_error_samples_for_items);
+			int count_error_samples_for_items,
+			int max_likes);
 
 	virtual ~fast_als();
 
@@ -47,8 +47,6 @@ public:
 	///
 	virtual void calculate(int count_iterations);
 
-	virtual void MSE();
-	virtual float hit_rate();
 	virtual float hit_rate_cpu();
 
 	///
@@ -135,6 +133,8 @@ private:
 
 	float _als_alfa;
 	float _als_gamma;
+
+	int _max_likes;
 
 	///
 	/// Count samples for calculate error
