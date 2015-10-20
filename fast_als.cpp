@@ -25,8 +25,8 @@ fast_als::fast_als(std::istream& tuples_stream,
 		_count_error_samples_for_items(count_error_samples_for_items),
 		_max_likes(max_likes)
 {
-	srand(time(NULL));
-	//srand(34);
+	//srand(time(NULL));
+	srand(34);
 
 	if (!_max_likes)
 	{
@@ -217,7 +217,7 @@ void fast_als::solve(
 	#pragma omp parallel for num_threads(24)
 	for (int i = 0; i < out_size; i++)
 	{
-		calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, out_size, _count_features, g, i);
+		calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, _count_features, g, i);
 	}
 	end = time(0) - start;
 	std::cerr << "calc regression: " << end << std::endl;
@@ -249,11 +249,16 @@ void fast_als::calc_ridge_regression(
 		const features_vector& in_v,
 		int in_size,
 		features_vector& out_v,
-		int out_size,
 		int _count_features,
 		features_vector& g,
 		int id)
 {
+	int random_offset = 0;
+	if (in_size > _max_likes)
+	{
+		random_offset = rand() % (in_size - _max_likes + 1);
+		in_size = _max_likes;
+	}
 	int count_samples = in_size + _count_features;
 	std::vector<float> errors(count_samples);
 
@@ -261,13 +266,13 @@ void fast_als::calc_ridge_regression(
 
 	for (int i = 0; i < in_size; i++)
 	{
-		int in_id_off = likes[i] * _count_features;
+		int in_id_off = likes[i + random_offset] * _count_features;
 		float sum = 0;
 		for (int j = 0; j < _count_features; j++)
 		{
 			sum += out_v[out_offset + j] * in_v[in_id_off + j];
 		}
-		float c = 1 + _als_alfa * weights[i];
+		float c = 1 + _als_alfa * weights[i + random_offset];
 		errors[i] = (c / (c - 1)) - sum;
 	}
 
@@ -290,8 +295,8 @@ void fast_als::calc_ridge_regression(
 		float d = 0;
 		for (int i = 0; i < in_size; i++)
 		{
-			int in_id = likes[i];
-			float c = _als_alfa * weights[i];
+			int in_id = likes[i + random_offset];
+			float c = _als_alfa * weights[i + random_offset];
 			float in_v_cur = in_v[in_id * _count_features + k];
 			a += c * in_v_cur * in_v_cur;
 			d += c * in_v_cur * (errors[i] + out_v_cur * in_v_cur);
@@ -311,7 +316,7 @@ void fast_als::calc_ridge_regression(
 
 		for (int i = 0; i < in_size; i++)
 		{
-			errors[i] += out_diff * in_v[likes[i] * _count_features + k];
+			errors[i] += out_diff * in_v[likes[i + random_offset] * _count_features + k];
 		}
 		for (int i = 0; i < _count_features; i++)
 		{

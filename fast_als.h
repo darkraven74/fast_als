@@ -103,7 +103,6 @@ protected:
 			const features_vector& in_v,
 			int in_size,
 			features_vector& out_v,
-			int out_size,
 			int _count_features,
 			features_vector& g,
 			int id);
