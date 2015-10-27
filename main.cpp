@@ -86,22 +86,21 @@ int main(int argc, char *argv[])
 
     std::cout << "als calc time: " << t2.tv_sec - t1.tv_sec << std::endl;
 
-    /*std::ofstream fout_users((output_file_name+".ufea").c_str());
+    std::ofstream fout_users((output_file_name + ".ufea").c_str());
     als_alg.serialize_users(fout_users);
     fout_users.close();
 
-    std::ofstream fout_items((output_file_name+".ifea").c_str());
+    std::ofstream fout_items((output_file_name + ".ifea").c_str());
     als_alg.serialize_items(fout_items);
     fout_items.close();
 
-    std::ofstream fout_umap((output_file_name+".umap").c_str());
+    std::ofstream fout_umap((output_file_name + ".umap").c_str());
     als_alg.serialize_users_map(fout_umap);
     fout_umap.close();
 
-    std::ofstream fout_imap((output_file_name+".imap").c_str());
+    std::ofstream fout_imap((output_file_name + ".imap").c_str());
     als_alg.serialize_items_map(fout_imap);
-    fout_imap.close();*/
-
+    fout_imap.close();
 
 
     return 0;
