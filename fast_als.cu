@@ -324,13 +324,13 @@ fast_als::features_vector fast_als::calc_g(const features_vector& in_v, int in_s
     checkStatus(cula_status);
 
     //transpose
-    for (int i = 0; i < _count_features; i++)
+    /*for (int i = 0; i < _count_features; i++)
     {
         for (int j = 0; j < i; j++)
         {
             std::iter_swap(G.begin() + i * _count_features + j, G.begin() + j * _count_features + i);
         }
-    }
+    }*/
 
     return G;
 }
@@ -371,10 +371,11 @@ void fast_als::calc_ridge_regression(
 	for (int i = 0; i < _count_features; i++)
 	{
 		float sum = 0;
-		int g_off = i * _count_features;
+        //int g_off = i * _count_features;
 		for (int j = 0; j < _count_features; j++)
 		{
-			sum += out_v[out_offset + j] * g[g_off + j];
+//			sum += out_v[out_offset + j] * g[g_off + j];
+            sum += out_v[out_offset + j] * g[j * _count_features + i];
 		}
 		errors[in_size + i] = -sum;
 	}
@@ -393,9 +394,11 @@ void fast_als::calc_ridge_regression(
 			a += c * in_v_cur * in_v_cur;
 			d += c * in_v_cur * (errors[i] + out_v_cur * in_v_cur);
 		}
+        int g_off = k * _count_features;
 		for (int i = 0; i < _count_features; i++)
 		{
-			float g_cur = g[i * _count_features + k];
+//			float g_cur = g[i * _count_features + k];
+            float g_cur = g[g_off + i];
 			a += g_cur * g_cur;
 			d += g_cur * (errors[in_size + i] + out_v_cur * g_cur);
 		}
@@ -412,7 +415,8 @@ void fast_als::calc_ridge_regression(
 		}
 		for (int i = 0; i < _count_features; i++)
 		{
-			errors[in_size + i] += out_diff * g[i * _count_features + k];
+//			errors[in_size + i] += out_diff * g[i * _count_features + k];
+            errors[in_size + i] += out_diff * g[g_off + i];
 		}
 	}
 }
