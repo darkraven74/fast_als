@@ -158,7 +158,6 @@ private:
     std::vector<float> YxY;
 
     std::vector<std::pair<int, int> > test_set;
-    likes_weights_vector _user_likes_weights_temp;
 
     culaStatus cula_status;
     cublasHandle_t cublas_handle;

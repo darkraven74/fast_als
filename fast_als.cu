@@ -50,7 +50,7 @@ fast_als::fast_als(std::istream &tuples_stream,
 
     read_likes(tuples_stream, count_samples, likes_format);
 
-    generate_test_set();
+    //generate_test_set();
 
     _features_users.assign(_count_users * _count_features, 0);
     _features_items.assign(_count_items * _count_features, 0);
@@ -80,7 +80,6 @@ void fast_als::read_likes(std::istream &tuples_stream, int count_simples, int fo
             _count_users++;
             _user_likes.push_back(std::vector<int>());
             _user_likes_weights.push_back(std::vector<float>());
-            _user_likes_weights_temp.push_back(std::vector<float>());
         }
 
         int user = _users_map[uid];
@@ -93,12 +92,10 @@ void fast_als::read_likes(std::istream &tuples_stream, int count_simples, int fo
         unsigned long iid = atol(value.c_str());
         float weight = 1;
 
-        float weight_temp = 1;
 
         if (format == 1) {
             getline(line_stream, value, tab_delim);
-            weight_temp = atof(value.c_str());
-            //weight = weight_temp;
+            weight = atof(value.c_str());
         }
 
         if (_items_map.find(iid) == _items_map.end()) {
@@ -115,7 +112,6 @@ void fast_als::read_likes(std::istream &tuples_stream, int count_simples, int fo
         ///
         _user_likes[user].push_back(item);
         _user_likes_weights[user].push_back(weight);
-        _user_likes_weights_temp[user].push_back(weight_temp);
         _item_likes[item].push_back(user);
         _item_likes_weights[item].push_back(weight);
 
@@ -132,32 +128,23 @@ void fast_als::read_likes(std::istream &tuples_stream, int count_simples, int fo
 void fast_als::generate_test_set()
 {
     int total_size = 0;
-    //for (int idx = 0; idx < 10000; idx++)
-    for (int i = 0; i < _count_users; i++) {
-        //int i = rand() % _count_users;
+    for (int idx = 0; idx < 10000; idx++) {
+        int i = rand() % _count_users;
         total_size += _user_likes[i].size();
-        int size = _user_likes[i].size();
-        for (int j = 0; j < size / 2;) {
-            int id = rand() % _user_likes[i].size();
+        int id = rand() % _user_likes[i].size();
 
-            if (_user_likes_weights_temp[i][id] < 4) {
-                continue;
+        test_set.push_back(std::make_pair(i, _user_likes[i][id]));
+
+        for (unsigned int k = 0; k < _item_likes[_user_likes[i][id]].size(); k++) {
+            if (_item_likes[_user_likes[i][id]][k] == i) {
+                _item_likes[_user_likes[i][id]].erase(_item_likes[_user_likes[i][id]].begin() + k);
+                _item_likes_weights[_user_likes[i][id]]
+                    .erase(_item_likes_weights[_user_likes[i][id]].begin() + k);
             }
-            test_set.push_back(std::make_pair(i, _user_likes[i][id]));
-
-            for (unsigned int k = 0; k < _item_likes[_user_likes[i][id]].size(); k++) {
-                if (_item_likes[_user_likes[i][id]][k] == i) {
-                    _item_likes[_user_likes[i][id]].erase(_item_likes[_user_likes[i][id]].begin() + k);
-                    _item_likes_weights[_user_likes[i][id]]
-                        .erase(_item_likes_weights[_user_likes[i][id]].begin() + k);
-                }
-            }
-
-            _user_likes[i].erase(_user_likes[i].begin() + id);
-            _user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
-            _user_likes_weights_temp[i].erase(_user_likes_weights_temp[i].begin() + id);
-            break;
         }
+
+        _user_likes[i].erase(_user_likes[i].begin() + id);
+        _user_likes_weights[i].erase(_user_likes_weights[i].begin() + id);
     }
 }
 
