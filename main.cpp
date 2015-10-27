@@ -1,4 +1,4 @@
-#include "fast_als.h"
+#include "fast_als.cuh"
 #include <string>
 #include <cstring>
 #include <iostream>
