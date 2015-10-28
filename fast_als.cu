@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <set>
 #include <ctime>
+#include <omp.h>
 
 void checkStatus(culaStatus status)
 {
@@ -214,7 +215,7 @@ void fast_als::solve(
     std::cerr << "calc g: " << end << std::endl;
 
     start = time(0);
-#pragma omp parallel for num_threads(24)
+#pragma omp parallel for num_threads(omp_get_max_threads())
     for (int i = 0; i < out_size; i++) {
         calc_ridge_regression(*(likes + i), *(weights + i), in_v, (*(likes + i)).size(), out_v, _count_features, g, i);
     }
@@ -398,7 +399,7 @@ float fast_als::hit_rate_cpu()
         int user = test_set[i].first;
         int item = test_set[i].second;
         std::vector<float> predict(_count_items);
-#pragma omp parallel for num_threads(24)
+#pragma omp parallel for num_threads(omp_get_max_threads())
         for (int j = 0; j < _count_items; j++) {
             float sum = 0;
             for (int k = 0; k < _count_features; k++) {
